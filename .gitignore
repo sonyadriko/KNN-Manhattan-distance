@@ -100,3 +100,10 @@ sessions/
 
 backend/venv/
 backend/
+
+debug_knn_euc.php
+debug_knn.php
+debug_path.php
+debug_sessiono.php
+test_form.php
+tesk_knn.php
