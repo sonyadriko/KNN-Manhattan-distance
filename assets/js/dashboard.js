@@ -74,8 +74,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 5000);
     });
     
-    // Add loading animation to buttons
-    const buttons = document.querySelectorAll('.btn[type="submit"]');
+    // Add loading animation to buttons (exclude no-loading class)
+    const buttons = document.querySelectorAll('.btn[type="submit"]:not(.no-loading)');
     buttons.forEach(button => {
         button.addEventListener('click', function() {
             const originalText = this.innerHTML;

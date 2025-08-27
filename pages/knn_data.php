@@ -1,4 +1,6 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 session_start();
 require_once '../config/db.php';
 
@@ -13,7 +15,7 @@ $action = isset($_GET['action']) ? $_GET['action'] : '';
 $message = '';
 
 // CREATE
-if ($_POST && !isset($_POST['id'])) {
+if ($_POST && !isset($_POST['id']) && !isset($_POST['confirm_delete_all'])) {
     $no_data = $_POST['no_data'];
     $merk = $_POST['merk'];
     $nama = $_POST['nama'];
@@ -40,7 +42,7 @@ if ($_POST && !isset($_POST['id'])) {
 }
 
 // UPDATE
-if ($_POST && isset($_POST['id'])) {
+if ($_POST && isset($_POST['id']) && !isset($_POST['confirm_delete_all'])) {
     $id = $_POST['id'];
     $no_data = $_POST['no_data'];
     $merk = $_POST['merk'];
@@ -57,7 +59,7 @@ if ($_POST && isset($_POST['id'])) {
     
     $sql = "UPDATE knn_training_data SET no_data=?, merk=?, nama=?, jenis=?, harga=?, standar=?, kaca=?, double_visor=?, ventilasi_udara=?, berat=?, wire_lock=?, kelas=? WHERE id=?";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("isssissssdss", $no_data, $merk, $nama, $jenis, $harga, $standar, $kaca, $double_visor, $ventilasi_udara, $berat, $wire_lock, $kelas, $id);
+    $stmt->bind_param("isssissssdssi", $no_data, $merk, $nama, $jenis, $harga, $standar, $kaca, $double_visor, $ventilasi_udara, $berat, $wire_lock, $kelas, $id);
     
     if ($stmt->execute()) {
         $message = "Data berhasil diupdate!";
@@ -77,6 +79,32 @@ if ($action == 'delete' && isset($_GET['id'])) {
         $message = "Data berhasil dihapus!";
     } else {
         $message = "Error: " . $stmt->error;
+    }
+}
+
+// DELETE ALL
+if ($action == 'delete_all' && isset($_POST['confirm_delete_all'])) {
+    try {
+        echo "<!-- DEBUG: Starting delete all process -->\n";
+        
+        $sql = "DELETE FROM knn_training_data";
+        echo "<!-- DEBUG: Executing SQL: $sql -->\n";
+        
+        $result = $conn->query($sql);
+        echo "<!-- DEBUG: Query result: " . ($result ? 'SUCCESS' : 'FAILED') . " -->\n";
+        
+        if ($result) {
+            echo "<!-- DEBUG: Resetting auto increment -->\n";
+            $conn->query("ALTER TABLE knn_training_data AUTO_INCREMENT = 1");
+            $message = "Semua data training berhasil dihapus!";
+            echo "<!-- DEBUG: Delete completed successfully -->\n";
+        } else {
+            $message = "Error: " . $conn->error;
+            echo "<!-- DEBUG: MySQL Error: " . $conn->error . " -->\n";
+        }
+    } catch (Exception $e) {
+        $message = "PHP Error: " . $e->getMessage();
+        echo "<!-- DEBUG: PHP Exception: " . $e->getMessage() . " -->\n";
     }
 }
 
@@ -142,12 +170,18 @@ $result = $conn->query($sql);
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h2><i class="fas fa-database me-2"></i>Kelola Data Training KNN</h2>
                     <div>
-                        <a href="dashboard.php" class="btn btn-outline-secondary">
+                        <a href="dashboard.php" class="btn btn-outline-secondary me-2">
                             <i class="fas fa-arrow-left me-2"></i>Kembali
                         </a>
-                        <a href="../knn_app.py" class="btn btn-success" target="_blank">
-                            <i class="fas fa-flask me-2"></i>KNN App
+                        <a href="knn_upload_excel.php" class="btn btn-success me-2">
+                            <i class="fas fa-file-excel me-2"></i>Upload Excel
                         </a>
+                        <a href="knn_template.php" class="btn btn-info me-2">
+                            <i class="fas fa-download me-2"></i>Template Excel
+                        </a>
+                        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteAllModal">
+                            <i class="fas fa-trash me-2"></i>Delete All Data
+                        </button>
                     </div>
                 </div>
 
@@ -197,7 +231,7 @@ $result = $conn->query($sql);
                                         <select class="form-select" name="jenis" required>
                                             <option value="">Pilih Jenis</option>
                                             <option value="Fullface" <?= ($edit_data['jenis'] ?? '') == 'Fullface' ? 'selected' : '' ?>>Fullface</option>
-                                            <option value="Halfface" <?= ($edit_data['jenis'] ?? '') == 'Halfface' ? 'selected' : '' ?>>Halfface</option>
+                                            <option value="Half face" <?= ($edit_data['jenis'] ?? '') == 'Half face' ? 'selected' : '' ?>>Half face</option>
                                             <option value="Retro" <?= ($edit_data['jenis'] ?? '') == 'Retro' ? 'selected' : '' ?>>Retro</option>
                                             <option value="Modular" <?= ($edit_data['jenis'] ?? '') == 'Modular' ? 'selected' : '' ?>>Modular</option>
                                         </select>
@@ -365,7 +399,62 @@ $result = $conn->query($sql);
         </div>
     </div>
 
+    <!-- Delete All Confirmation Modal -->
+    <div class="modal fade" id="deleteAllModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Konfirmasi Hapus Semua Data
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger">
+                        <i class="fas fa-warning me-2"></i>
+                        <strong>PERHATIAN!</strong> Tindakan ini akan menghapus SEMUA data training KNN dan tidak dapat dibatalkan.
+                    </div>
+                    <p>Apakah Anda yakin ingin menghapus semua data training?</p>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="confirmCheck" required>
+                        <label class="form-check-label" for="confirmCheck">
+                            Saya memahami bahwa tindakan ini tidak dapat dibatalkan
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Batal
+                    </button>
+                    <form method="POST" style="display: inline;" id="deleteAllForm">
+                        <input type="hidden" name="confirm_delete_all" value="1">
+                        <button type="submit" class="btn btn-danger no-loading" id="deleteAllBtn" disabled>
+                            <i class="fas fa-trash me-2"></i>Ya, Hapus Semua Data
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="../assets/js/dashboard.js"></script>
+    <!-- <script src="../assets/js/dashboard.js"></script> -->
+    <script>
+        // Enable delete button only when checkbox is checked
+        document.getElementById('confirmCheck').addEventListener('change', function() {
+            document.getElementById('deleteAllBtn').disabled = !this.checked;
+        });
+        
+        // Add URL parameter for delete_all action
+        document.getElementById('deleteAllForm').addEventListener('submit', function(e) {
+            this.action = '?action=delete_all';
+            
+            // Double confirmation
+            if (!confirm('Apakah Anda BENAR-BENAR yakin ingin menghapus SEMUA data training?')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    </script>
 </body>
 </html>

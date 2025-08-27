@@ -80,7 +80,7 @@ checkAuth();
                             </div>
                         </div>
                     </div>
-                    
+<!--                     
                     <div class="col-xl-3 col-md-6 mb-4">
                         <div class="card stats-card border-0 shadow-sm h-100">
                             <div class="card-body">
@@ -151,7 +151,7 @@ checkAuth();
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </div> -->
                 </div>
                 
                 <!-- Recent Activity -->
